@@ -27,5 +27,4 @@ jobs:
 
     - name: Testleri çalıştır
       run: |
-        cd app
-        pytest
+        PYTHONPATH=. pytest
