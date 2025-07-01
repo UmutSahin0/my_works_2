@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-app = FastAPI()
+fast_app = FastAPI()
 
 class CountRequest(BaseModel):
     number: int
 
-@app.post("/count")
+@fast_app.post("/count")
 def count_up(request: CountRequest):
     if request.number < 1:
         raise HTTPException(status_code=400, detail="Number must be >= 1")

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
-from app.main import app
+from app.main import fast_app
 
-client = TestClient(app)
+client = TestClient(fast_app)
 
 def test_count_up_valid():
     response = client.post("/count", json={"number": 3})
