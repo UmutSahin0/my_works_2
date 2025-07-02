@@ -38,7 +38,6 @@ jobs:
 
         echo "[3/6] Sanal ortam kuruluyor..."
         cd my_works_2
-        python3 -m venv venv
         source venv/bin/activate
 
         echo "[4/6] Gereksinimler yükleniyor..."
