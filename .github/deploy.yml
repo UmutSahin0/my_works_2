@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo (sadece GitHub Actions için, EC2'de değil)
+    - name: Checkout repo
       uses: actions/checkout@v3
 
     - name: Set up SSH key
@@ -20,31 +20,42 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy and configure on EC2
+    - name: Deploy and start FastAPI app
       run: |
         ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
         set -e
 
-        echo "[1/6] Python & pip kuruluyor..."
+        echo "[1] Python 3.11 kurulumu"
         sudo apt update
-        sudo apt install -y python3 python3-pip python3-venv git
+        sudo apt install -y software-properties-common
+        sudo add-apt-repository ppa:deadsnakes/ppa -y
+        sudo apt update
+        sudo apt install -y python3.11 python3.11-venv python3.11-distutils git
 
-        echo "[2/6] Repo klonlanıyor..."
+        echo "[2] python3 -> python3.11 olarak ayarlanıyor"
+        sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+        sudo update-alternatives --set python3 /usr/bin/python3.11
+
+        echo "[3] Pip kuruluyor"
+        curl -sS https://bootstrap.pypa.io/get-pip.py | python3
+
+        echo "[4] Repo klonlanıyor veya güncelleniyor"
+        cd /home/ubuntu
         if [ ! -d "my_works_2" ]; then
           git clone https://github.com/UmutSahin0/my_works_2.git
         else
-          cd my_works_2 && git pull origin main && cd ..
+          cd my_works_2
+          git pull origin main
         fi
 
-        echo "[3/6] Sanal ortam kuruluyor..."
-        cd my_works_2
+        echo "[5] venv kuruluyor ve paketler yükleniyor"
+        cd /home/ubuntu/my_works_2
+        python3 -m venv venv
         source venv/bin/activate
-
-        echo "[4/6] Gereksinimler yükleniyor..."
         pip install --upgrade pip
         pip install -r requirements.txt
 
-        echo "[5/6] systemd servisi yazılıyor..."
+        echo "[6] systemd servisi tanımlanıyor"
         sudo tee /etc/systemd/system/fastapi_app.service > /dev/null << SERVICE
 [Unit]
 Description=FastAPI App
@@ -60,10 +71,10 @@ Restart=always
 WantedBy=multi-user.target
 SERVICE
 
-        echo "[6/6] Servis başlatılıyor..."
+        echo "[7] Servis başlatılıyor"
         sudo systemctl daemon-reload
         sudo systemctl enable fastapi_app
         sudo systemctl restart fastapi_app
 
-        echo "[✔] Deployment tamamlandı. API şu adreste çalışıyor: http://${{ secrets.EC2_HOST }}:8000/docs"
+        echo "[✔] API yayında: http://${{ secrets.EC2_HOST }}:8000/docs"
         EOF
