@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
+    - name: Checkout repo (sadece GitHub Actions için, EC2'de değil)
       uses: actions/checkout@v3
 
     - name: Set up SSH key
@@ -20,23 +20,51 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy code and install requirements
+    - name: Deploy and configure on EC2
       run: |
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
-          set -e
-          cd /home/ubuntu/my_works_2
-          git pull origin main
-          if [ ! -d "venv" ]; then python3 -m venv venv; fi
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pkill uvicorn || true
-        '
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+        set -e
 
-    - name: Start FastAPI app
-      run: |
-        ssh -f ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-          cd /home/ubuntu/my_works_2 &&
-          source venv/bin/activate &&
-          nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 & exit
-        "
+        echo "[1/6] Python & pip kuruluyor..."
+        sudo apt update
+        sudo apt install -y python3 python3-pip python3-venv git
+
+        echo "[2/6] Repo klonlanıyor..."
+        if [ ! -d "my_works_2" ]; then
+          git clone https://github.com/UmutSahin0/my_works_2.git
+        else
+          cd my_works_2 && git pull origin main && cd ..
+        fi
+
+        echo "[3/6] Sanal ortam kuruluyor..."
+        cd my_works_2
+        python3 -m venv venv
+        source venv/bin/activate
+
+        echo "[4/6] Gereksinimler yükleniyor..."
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+        echo "[5/6] systemd servisi yazılıyor..."
+        sudo tee /etc/systemd/system/fastapi_app.service > /dev/null << SERVICE
+[Unit]
+Description=FastAPI App
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/my_works_2
+ExecStart=/home/ubuntu/my_works_2/venv/bin/uvicorn app.main:fast_app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+        echo "[6/6] Servis başlatılıyor..."
+        sudo systemctl daemon-reload
+        sudo systemctl enable fastapi_app
+        sudo systemctl restart fastapi_app
+
+        echo "[✔] Deployment tamamlandı. API şu adreste çalışıyor: http://${{ secrets.EC2_HOST }}:8000/docs"
+        EOF
