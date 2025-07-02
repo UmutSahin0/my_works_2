@@ -45,8 +45,7 @@ echo "[INFO] Killing any existing uvicorn process"
 pkill uvicorn || true
 
 echo "[INFO] Starting FastAPI app"
-nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
-disown
+nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 & disown
 
 echo "[INFO] Deployment complete"
 EOF
