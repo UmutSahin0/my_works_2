@@ -20,33 +20,34 @@ jobs:
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy to EC2
+    - name: Deploy code and install requirements
       run: |
         ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-set -e
+        set -e
+        echo "[INFO] Navigating to project directory"
+        cd /home/ubuntu/my_works_2
 
-echo "[INFO] Navigating to project directory"
-cd /home/ubuntu/my_works_2
+        echo "[INFO] Pulling latest code"
+        git pull origin main
 
-echo "[INFO] Pulling latest code"
-git pull origin main
+        echo "[INFO] Creating venv if not exists"
+        if [ ! -d "venv" ]; then
+          python3 -m venv venv
+        fi
 
-echo "[INFO] Creating venv if not exists"
-if [ ! -d "venv" ]; then
-  python3 -m venv venv
-fi
+        echo "[INFO] Activating venv and installing requirements"
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
-echo "[INFO] Activating venv and installing requirements"
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+        echo "[INFO] Killing any existing uvicorn process"
+        pkill uvicorn || true
+        EOF
 
-echo "[INFO] Killing any existing uvicorn process"
-pkill uvicorn || true
-
-echo "[INFO] Starting FastAPI app"
-nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
-sleep 1
-disown
-echo "[INFO] Deployment complete"
-EOF
+    - name: Start FastAPI app
+      run: |
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+          cd /home/ubuntu/my_works_2 &&
+          source venv/bin/activate &&
+          nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 > uvicorn.log 2>&1 &
+        "
