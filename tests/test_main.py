@@ -1,9 +1,12 @@
-from fastapi.testclient import TestClient
-from app.main import count_up, CountRequest
+# tests/test_count.py
 
-
+from app.main import count_logic
 
 def test_count_up_valid():
-    request = CountRequest(number=5)
-    response = count_up(request)
-    assert response == {"result": "12345"}
+    assert count_logic(5) == "12345"
+
+def test_count_up_invalid():
+    try:
+        count_logic(0)
+    except ValueError as e:
+        assert str(e) == "Number must be >= 1"
