@@ -8,6 +8,7 @@ def test_count_up_valid():
     assert response.status_code == 200
     assert response.json() == {"result": "123"}
 
+
 def test_count_up_invalid():
     response = client.post("/count", json={"number": 0})
     assert response.status_code == 400
