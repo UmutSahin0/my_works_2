@@ -1,0 +1,48 @@
+name: CD to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "[INFO] Killing existing uvicorn if any"
+          pkill uvicorn || true
+
+          echo "[INFO] Navigating to project directory"
+          cd /home/ubuntu/my_works_2
+
+          echo "[INFO] Pulling latest code"
+          git pull origin main
+
+          echo "[INFO] Creating venv if missing"
+          if [ ! -d "venv" ]; then
+            python3 -m venv venv
+          fi
+
+          echo "[INFO] Activating virtual environment"
+          source venv/bin/activate
+
+          echo "[INFO] Installing requirements"
+          pip install --upgrade -r requirements.txt
+
+          echo "[INFO] Starting FastAPI with Uvicorn"
+          nohup uvicorn main:app --host 0.0.0.0 --port 8000 &
+        EOF
