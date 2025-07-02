@@ -31,6 +31,9 @@ jobs:
           echo "[INFO] Updating packages"
           sudo apt update -y
 
+          echo "[INFO] Updating packages"
+          sudo apt -o APT::Update::Post-Invoke-Success::= update -y
+
           echo "[INFO] Fixing apt_pkg error"
           sudo apt install --reinstall -y python3-apt
 
