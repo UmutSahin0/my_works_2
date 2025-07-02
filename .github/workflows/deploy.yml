@@ -63,7 +63,6 @@ jobs:
           echo "[INFO] Killing any existing uvicorn process"
           pkill uvicorn || true
 
-
           echo "[INFO] Starting FastAPI app"
           nohup uvicorn app.main:fast_app --host 0.0.0.0 --port 8000 &
         EOF
