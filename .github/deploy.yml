@@ -28,6 +28,9 @@ jobs:
           echo "[INFO] Navigating to project directory"
           cd /home/ubuntu/my_works_2
 
+          sudo apt install -y python3 python3-venv python3-pip
+
+
           echo "[INFO] Pulling latest code"
           git pull origin main
 
